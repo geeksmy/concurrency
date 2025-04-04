@@ -6,3 +6,5 @@ authors = ["Kevin <jieyun1993@gmail.com>"]
 license = "MIT"
 
 [dependencies]
+anyhow = "1.0.97"
+rand = "0.8.5"
