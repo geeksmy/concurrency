@@ -1,0 +1,94 @@
+# git-cliff ~ 配置文件
+# https://git-cliff.org/docs/configuration
+
+[changelog]
+# 变更日志头部
+header = """
+# Changelog\n
+此文件将记录该项目的所有重要变更。有关提交规范，请参阅 [conventional commits](https://www.conventionalcommits.org/)。\n
+"""
+# 变更日志主体的模板
+# https://keats.github.io/tera/docs/#introduction
+body = """
+---
+{% if version %}\
+    {% if previous.version %}\
+        ## [{{ version | trim_start_matches(pat="v") }}]($REPO/compare/{{ previous.version }}..{{ version }}) - {{ timestamp | date(format="%Y-%m-%d") }}
+    {% else %}\
+        ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+    {% endif %}\
+{% else %}\
+    ## [unreleased]  # 未发布
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | striptags | trim | upper_first }}
+    {% for commit in commits
+    | filter(attribute="scope")
+    | sort(attribute="scope") %}
+        - **({{commit.scope}})**{% if commit.breaking %} [**breaking**] # 重大变更 {% endif %} \
+            {{ commit.message|trim }} - ([{{ commit.id | truncate(length=7, end="") }}]($REPO/commit/{{ commit.id }})) - {{ commit.author.name }}
+    {%- endfor -%}
+    {% raw %}\n{% endraw %}\
+    {%- for commit in commits %}
+        {%- if commit.scope -%}
+        {% else -%}
+            - {% if commit.breaking %} [**breaking**] # 重大变更 {% endif %}\
+                {{ commit.message|trim }} - ([{{ commit.id | truncate(length=7, end="") }}]($REPO/commit/{{ commit.id }})) - {{ commit.author.name }}
+        {% endif -%}
+    {% endfor -%}
+{% endfor %}\n
+"""
+# 变更日志底部的模板
+footer = """
+<!-- 由 git-cliff 生成 -->
+"""
+# 从模板中移除开头和结尾的空白
+trim = true
+# 后处理器
+postprocessors = [
+    { pattern = '\$REPO', replace = "https://github.com/geeksmy/rcli" }, # 替换代码库 URL
+]
+
+[git]
+# 基于 https://www.conventionalcommits.org 解析提交记录
+conventional_commits = true
+# 过滤掉非规范的提交记录
+filter_unconventional = false
+# 将提交信息的每一行处理为单独的提交记录
+split_commits = false
+# 用于预处理提交信息的正则表达式
+commit_preprocessors = [
+    # { pattern = '\((\w+\s)?#([0-9]+)\)', replace = "([#${2}](https://github.com/geeksmy/rcli/issues/${2}))"}, # 替换问题编号
+]
+# 用于解析和分组提交记录的正则表达式
+commit_parsers = [
+    { message = "\\[skip", skip = true }, # 跳过包含 "[skip]" 的提交
+    { message = "^feat", group = "Features" }, # 分组至 "功能"
+    { message = "^fix", group = "Bug Fixes" }, # 分组至 "修复"
+    { message = "^doc", group = "Documentation" }, # 分组至 "文档"
+    { message = "^perf", group = "Performance" }, # 分组至 "性能"
+    { message = "^refactor", group = "Refactoring" }, # 分组至 "重构"
+    { message = "^style", group = "Style" }, # 分组至 "样式"
+    { message = "^revert", group = "Revert" }, # 分组至 "撤销更改"
+    { message = "^test", group = "Tests" }, # 分组至 "测试"
+    { message = "^chore\\(version\\):", skip = true }, # 跳过版本杂项的提交
+    { message = "^chore", group = "Miscellaneous Chores" }, # 分组至 "其他杂项"
+    { message = ".*", group = "Other" }, # 分组至 "其他"
+    { body = ".*security", group = "Security" }, # 分组至 "安全"
+]
+# 保护重大变更提交不会因匹配跳过规则而被跳过
+protect_breaking_commits = false
+# 过滤掉不匹配提交解析器的提交记录
+filter_commits = false
+# 匹配 Git 标签的正则表达式
+tag_pattern = "v[0-9].*"
+# 跳过的标签的正则表达式
+skip_tags = "v0.1.0-beta.1"
+# 忽略的标签的正则表达式
+ignore_tags = ""
+# 按拓扑顺序排序标签
+topo_order = false
+# 按最旧/最新顺序对部分中的提交记录排序
+sort_commits = "oldest"
+# 限制变更日志中包含的提交记录数量
+# limit_commits = 42
