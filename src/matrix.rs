@@ -1,3 +1,4 @@
+use crate::Vector;
 use anyhow::Result;
 use std::{
     fmt,
@@ -58,14 +59,19 @@ where
     T: Copy + Default + AddAssign + Add<Output = T> + Mul<Output = T>,
 {
     if a.col != b.row {
-        return Err(anyhow::anyhow!("Matrix mul error: a.col != b.row"));
+        return Err(anyhow::anyhow!("矩阵乘法错误: a.col != b.row"));
     }
     let mut data = vec![T::default(); a.row * b.col];
     for i in 0..a.row {
         for j in 0..b.col {
-            for k in 0..a.col {
-                data[i * b.col + j] += a.data[i * a.col + k] * b.data[k * b.col + j];
-            }
+            let row = Vector::new(&a.data[i * a.col..(i + 1) * a.col]);
+            let col_data = b.data[j..]
+                .iter()
+                .step_by(b.col)
+                .copied()
+                .collect::<Vec<_>>();
+            let col = Vector::new(col_data);
+            data[i * b.col + j] += dot_product(row, col)?;
         }
     }
     Ok(Matrix {
@@ -73,6 +79,20 @@ where
         row: a.row,
         col: b.col,
     })
+}
+
+pub fn dot_product<T>(a: Vector<T>, b: Vector<T>) -> Result<T>
+where
+    T: Copy + Default + AddAssign + Add<Output = T> + Mul<Output = T>,
+{
+    if a.len() != b.len() {
+        return Err(anyhow::anyhow!("点乘错误: a.len() != b.len()"));
+    }
+    let mut sum = T::default();
+    for i in 0..a.len() {
+        sum += a[i] * b[i];
+    }
+    Ok(sum)
 }
 
 #[cfg(test)]
@@ -91,6 +111,16 @@ mod tests {
             format!("{:?}", c),
             "Matrix(row 2, col 2, [[22, 28], [49, 64]])"
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_dot_product() -> Result<()> {
+        let a = Vector::new([1, 2, 3]);
+        let b = Vector::new([4, 5, 6]);
+        let c = dot_product(a, b)?;
+        assert_eq!(c, 32);
 
         Ok(())
     }
